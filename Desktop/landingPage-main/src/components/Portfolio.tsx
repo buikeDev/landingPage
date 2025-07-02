@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 const portfolioItems = [
   {
@@ -53,6 +53,7 @@ const PortfolioItem = ({ item }: { item: (typeof portfolioItems)[0] }) => {
         src={item.image}
         alt={item.title}
         className="w-full h-64 object-cover transition-transform duration-500"
+        draggable={false}
       />
       <div className="absolute inset-0 bg-agency-blue bg-opacity-0 group-hover:bg-opacity-80 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100">
         <div className="text-center text-white p-4">
@@ -73,16 +74,33 @@ const Portfolio = () => {
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
 
+  const scrollAmount = 320; // px, roughly one card width
+
+  const handleScrollLeft = () => {
+    if (sliderRef.current) {
+      sliderRef.current.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (sliderRef.current) {
+      sliderRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     if (sliderRef.current) {
       setStartX(e.pageX - sliderRef.current.offsetLeft);
       setScrollLeft(sliderRef.current.scrollLeft);
     }
+    // Prevent image/text selection while dragging
+    document.body.style.userSelect = "none";
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    document.body.style.userSelect = "";
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -90,6 +108,28 @@ const Portfolio = () => {
     e.preventDefault();
     if (sliderRef.current) {
       const x = e.pageX - sliderRef.current.offsetLeft;
+      const walk = (x - startX) * 2; // scroll-fast
+      sliderRef.current.scrollLeft = scrollLeft - walk;
+    }
+  };
+
+  // Touch events for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+    if (sliderRef.current) {
+      setStartX(e.touches[0].pageX - sliderRef.current.offsetLeft);
+      setScrollLeft(sliderRef.current.scrollLeft);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    if (sliderRef.current) {
+      const x = e.touches[0].pageX - sliderRef.current.offsetLeft;
       const walk = (x - startX) * 2;
       sliderRef.current.scrollLeft = scrollLeft - walk;
     }
@@ -101,19 +141,40 @@ const Portfolio = () => {
       className="py-20 bg-gradient-to-br from-blue-50 to-slate-100"
     >
       <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={handleScrollLeft}
+            className="p-2 rounded-full bg-white shadow hover:bg-blue-100 transition disabled:opacity-50"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <h2 className="text-2xl font-bold text-center flex-1">Portfolio</h2>
+          <button
+            onClick={handleScrollRight}
+            className="p-2 rounded-full bg-white shadow hover:bg-blue-100 transition disabled:opacity-50"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
         <div
           ref={sliderRef}
           className={`
-            overflow-x-hidden relative
-            cursor-[url('/cursor-grab.png'),_grab]
+            overflow-x-hidden relative select-none
+            cursor-[url('/cursor-grab.svg'),_grab]
             ${
-              isDragging ? "cursor-[url('/cursor-grabbing.png'),_grabbing]" : ""
+              isDragging ? "cursor-[url('/cursor-grabbing.svg'),_grabbing]" : ""
             }
+            scrollbar-hide
           `}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onMouseMove={handleMouseMove}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchMove={handleTouchMove}
         >
           <div className="flex gap-6 p-4">
             {portfolioItems.map((item, index) => (
@@ -128,6 +189,7 @@ const Portfolio = () => {
                     src={item.image}
                     alt={item.title}
                     className="w-full h-full object-cover"
+                    draggable={false}
                   />
                 </div>
               </div>
